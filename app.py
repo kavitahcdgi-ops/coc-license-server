@@ -7,13 +7,13 @@ app.secret_key = "LAKHAN_84411004778"
 
 DB_FILE = "database.db"
 
-# ---------------- ADMIN CONFIG ----------------
+# ---------------- ADMIN ----------------
 ADMIN_USER = "lakhan_8956"
 ADMIN_PASS = "Lakhan@21"
 
 ADMIN_API_KEY = "LAKHAN_84411004778"
 
-# ---------------- INIT DB ----------------
+# ---------------- DB INIT ----------------
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -38,7 +38,7 @@ init_db()
 def home():
     return "COC License Server V2 Running"
 
-# ---------------- ADMIN LOGIN ----------------
+# ---------------- LOGIN ----------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -51,13 +51,13 @@ def login():
 
         return "Invalid login"
 
-    return '''
+    return """
     <form method="POST">
-        <input name="username" placeholder="Username">
-        <input name="password" type="password" placeholder="Password">
+        <input name="username" placeholder="Username"><br>
+        <input name="password" type="password" placeholder="Password"><br>
         <button type="submit">Login</button>
     </form>
-    '''
+    """
 
 # ---------------- DASHBOARD ----------------
 @app.route("/dashboard")
@@ -82,16 +82,13 @@ def dashboard():
 
     conn.close()
 
-    return f"""
-    <h1>License Dashboard</h1>
-    <p>Total: {total}</p>
-    <p>Active: {active}</p>
-    <p>Inactive: {inactive}</p>
-    <hr>
-    <h3>All Licenses</h3>
-    <pre>{data}</pre>
-    <br><a href="/logout">Logout</a>
-    """
+    return render_template(
+        "dashboard.html",
+        data=data,
+        total=total,
+        active=active,
+        inactive=inactive
+    )
 
 # ---------------- LOGOUT ----------------
 @app.route("/logout")
@@ -99,7 +96,7 @@ def logout():
     session.clear()
     return redirect("/login")
 
-# ---------------- GENERATE LICENSE (SECURE) ----------------
+# ---------------- GENERATE LICENSE ----------------
 @app.route("/generate", methods=["POST"])
 def generate():
     api_key = request.headers.get("x-api-key")
@@ -163,7 +160,6 @@ def verify():
     if expiry < today:
         return jsonify({"status": "expired"})
 
-    # first time bind
     if saved_hwid is None:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
