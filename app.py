@@ -9,9 +9,8 @@ app.secret_key = "LAKHAN_84411004778"
 
 DB_FILE = "database.db"
 
-# 🔥 YOUR API KEY (UPDATED)
+# 🔥 ADMIN CONFIG
 ADMIN_API_KEY = "LAKHAN_84411004778"
-
 ADMIN_USER = "lakhan_8956"
 ADMIN_PASS = "Lakhan@21"
 
@@ -79,7 +78,9 @@ def api_licenses():
     conn.close()
     return jsonify(data)
 
-# ---------------- GENERATE ----------------
+# =========================================================
+# 🔥 FIXED GENERATE (NOW STORES HWID EMPTY PROPERLY)
+# =========================================================
 @app.route("/generate", methods=["POST"])
 def generate():
     if request.headers.get("x-api-key") != ADMIN_API_KEY:
@@ -100,8 +101,8 @@ def generate():
     c = conn.cursor()
 
     c.execute(
-        "INSERT INTO licenses (license_key, active, expiry) VALUES (?,?,?)",
-        (key, 1, expiry)
+        "INSERT INTO licenses (license_key, hwid, active, expiry) VALUES (?,?,?,?)",
+        (key, "", 1, expiry)
     )
 
     conn.commit()
@@ -128,6 +129,46 @@ def delete():
     conn.close()
 
     return jsonify({"status": "deleted"})
+
+# =========================================================
+# 🔥 NEW: PROPER LICENSE VALIDATION ENDPOINT
+# =========================================================
+@app.route("/validate", methods=["POST"])
+def validate():
+    data = request.json
+    key = data.get("key")
+
+    if not key:
+        return jsonify({"valid": False})
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    c.execute(
+        "SELECT license_key, active, expiry FROM licenses WHERE license_key=?",
+        (key,)
+    )
+
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"valid": False})
+
+    license_key, active, expiry = row
+
+    # inactive check
+    if active != 1:
+        return jsonify({"valid": False})
+
+    # expiry check
+    try:
+        if expiry < datetime.now().strftime("%Y-%m-%d"):
+            return jsonify({"valid": False})
+    except:
+        return jsonify({"valid": False})
+
+    return jsonify({"valid": True})
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
