@@ -11,6 +11,7 @@ background:#0f172a;
 color:white;
 }
 
+/* HEADER */
 .header{
 padding:15px;
 background:#111827;
@@ -18,6 +19,7 @@ font-size:20px;
 font-weight:bold;
 }
 
+/* STATS */
 .stats{
 display:flex;
 gap:10px;
@@ -32,6 +34,7 @@ border-radius:12px;
 text-align:center;
 }
 
+/* GENERATE BOX */
 .generate-box{
 margin:20px;
 padding:20px;
@@ -48,17 +51,19 @@ width:150px;
 }
 
 button{
-padding:10px 15px;
+padding:8px 12px;
 border:none;
 border-radius:8px;
 cursor:pointer;
 }
 
+/* BUTTONS */
 .genbtn{background:green;color:white;}
-
 .del{background:red;color:white;}
 .ext{background:#2563eb;color:white;}
+.copy{background:#f59e0b;color:black;}
 
+/* TABLE */
 table{
 width:100%;
 border-collapse:collapse;
@@ -70,32 +75,41 @@ padding:10px;
 border-bottom:1px solid #374151;
 }
 
-th{background:#1f2937;}
+th{
+background:#1f2937;
+}
+
+a{
+color:white;
+}
 </style>
 
 </head>
 
 <body>
 
+<!-- HEADER -->
 <div class="header">
 🔐 COC License Dashboard
 <a href="/logout" style="float:right;color:white;">Logout</a>
 </div>
 
+<!-- STATS -->
 <div class="stats">
 <div class="card">📦 Total<br><h2>{{total}}</h2></div>
 <div class="card">🟢 Active<br><h2>{{active}}</h2></div>
 <div class="card">🔴 Inactive<br><h2>{{inactive}}</h2></div>
 </div>
 
+<!-- GENERATE -->
 <div class="generate-box">
 <h3>🔥 Generate License</h3>
 
-<input id="days" placeholder="Days (7/15/30)">
+<input id="days" placeholder="Days (7 / 15 / 30)">
 <button class="genbtn" onclick="generate()">Generate</button>
-
 </div>
 
+<!-- TABLE -->
 <table>
 <tr>
 <th>ID</th>
@@ -114,8 +128,11 @@ th{background:#1f2937;}
 <td>{{row[3]}}</td>
 <td>{{row[4]}}</td>
 <td>
+
+<button class="copy" onclick="copyKey('{{row[1]}}')">Copy</button>
 <button class="del" onclick="del('{{row[1]}}')">Delete</button>
 <button class="ext" onclick="ext('{{row[1]}}')">Extend</button>
+
 </td>
 </tr>
 {% endfor %}
@@ -124,6 +141,7 @@ th{background:#1f2937;}
 
 <script>
 
+/* GENERATE */
 function generate(){
 let days = document.getElementById("days").value;
 
@@ -142,6 +160,7 @@ location.reload();
 });
 }
 
+/* DELETE */
 function del(k){
 fetch("/delete",{
 method:"POST",
@@ -150,13 +169,20 @@ body:JSON.stringify({license:k})
 }).then(()=>location.reload());
 }
 
+/* EXTEND */
 function ext(k){
-let d=prompt("Days?");
+let d = prompt("Enter days to extend:");
 fetch("/extend",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({license:k,days:d})
 }).then(()=>location.reload());
+}
+
+/* COPY LICENSE */
+function copyKey(key){
+navigator.clipboard.writeText(key);
+alert("Copied: " + key);
 }
 
 </script>
