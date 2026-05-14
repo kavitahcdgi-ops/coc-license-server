@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify, render_template, redirect, session
 import sqlite3
+import random
+import string
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -12,7 +14,7 @@ ADMIN_USER = "lakhan_8956"
 ADMIN_PASS = "Lakhan@21"
 ADMIN_API_KEY = "LAKHAN_84411004778"
 
-# ---------------- DB INIT ----------------
+# ---------------- DB ----------------
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -41,7 +43,7 @@ def init_db():
 
 init_db()
 
-# ---------------- LOG FUNCTION ----------------
+# ---------------- LOG ----------------
 def add_log(key, action):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -53,6 +55,12 @@ def add_log(key, action):
 
     conn.commit()
     conn.close()
+
+# ---------------- RANDOM KEY GENERATOR ----------------
+def generate_key():
+    letters = ''.join(random.choices(string.ascii_uppercase, k=10))
+    numbers = ''.join(random.choices(string.digits, k=5))
+    return letters + numbers
 
 # ---------------- HOME ----------------
 @app.route("/")
@@ -74,8 +82,8 @@ def login():
 
     return """
     <form method="POST">
-        <input name="username" placeholder="Username"><br>
-        <input name="password" type="password" placeholder="Password"><br>
+        <input name="username" placeholder="Username"><br><br>
+        <input name="password" type="password" placeholder="Password"><br><br>
         <button type="submit">Login</button>
     </form>
     """
@@ -111,12 +119,6 @@ def dashboard():
         inactive=inactive
     )
 
-# ---------------- LOGOUT ----------------
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/login")
-
 # ---------------- GENERATE ----------------
 @app.route("/generate", methods=["POST"])
 def generate():
@@ -124,9 +126,9 @@ def generate():
         return jsonify({"status": "unauthorized"}), 401
 
     data = request.json
-    key = data.get("license")
     days = int(data.get("days", 7))
 
+    key = generate_key()
     expiry = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
 
     conn = sqlite3.connect(DB_FILE)
@@ -141,10 +143,14 @@ def generate():
 
         add_log(key, "generated")
 
-        return jsonify({"status": "created", "license": key, "expiry": expiry})
+        return jsonify({
+            "status": "created",
+            "license": key,
+            "expiry": expiry
+        })
 
     except:
-        return jsonify({"status": "exists"})
+        return jsonify({"status": "error"})
 
     finally:
         conn.close()
@@ -238,7 +244,7 @@ def extend():
     conn.commit()
     conn.close()
 
-    add_log(key, f"extended +{days} days")
+    add_log(key, f"extended +{days}")
 
     return jsonify({"status": "extended", "expiry": new_expiry})
 
