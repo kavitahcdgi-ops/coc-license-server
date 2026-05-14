@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>License Dashboard</title>
+<title>Dashboard</title>
 
 <style>
 body{
@@ -11,31 +11,13 @@ background:#0f172a;
 color:white;
 }
 
-/* HEADER */
 .header{
 padding:15px;
 background:#111827;
 font-size:20px;
-font-weight:bold;
 }
 
-/* STATS */
-.stats{
-display:flex;
-gap:10px;
-padding:20px;
-}
-
-.card{
-flex:1;
-background:#1f2937;
-padding:15px;
-border-radius:12px;
-text-align:center;
-}
-
-/* GENERATE BOX */
-.generate-box{
+.generate{
 margin:20px;
 padding:20px;
 background:#1f2937;
@@ -46,8 +28,7 @@ input{
 padding:10px;
 border-radius:8px;
 border:none;
-margin-right:10px;
-width:150px;
+width:160px;
 }
 
 button{
@@ -57,17 +38,19 @@ border-radius:8px;
 cursor:pointer;
 }
 
-/* BUTTONS */
 .genbtn{background:green;color:white;}
-.del{background:red;color:white;}
-.ext{background:#2563eb;color:white;}
-.copy{background:#f59e0b;color:black;}
 
-/* TABLE */
+.search{
+margin:20px;
+padding:10px;
+width:300px;
+border-radius:8px;
+border:none;
+}
+
 table{
 width:100%;
 border-collapse:collapse;
-margin-top:10px;
 }
 
 th,td{
@@ -75,12 +58,20 @@ padding:10px;
 border-bottom:1px solid #374151;
 }
 
-th{
-background:#1f2937;
-}
+th{background:#1f2937;}
 
-a{
-color:white;
+.copy{background:#f59e0b;color:black;}
+.del{background:red;color:white;}
+
+/* TOAST */
+.toast{
+position:fixed;
+bottom:20px;
+right:20px;
+background:#22c55e;
+padding:10px 15px;
+border-radius:8px;
+display:none;
 }
 </style>
 
@@ -88,29 +79,19 @@ color:white;
 
 <body>
 
-<!-- HEADER -->
-<div class="header">
-🔐 COC License Dashboard
-<a href="/logout" style="float:right;color:white;">Logout</a>
-</div>
-
-<!-- STATS -->
-<div class="stats">
-<div class="card">📦 Total<br><h2>{{total}}</h2></div>
-<div class="card">🟢 Active<br><h2>{{active}}</h2></div>
-<div class="card">🔴 Inactive<br><h2>{{inactive}}</h2></div>
-</div>
+<div class="header">🔐 License Dashboard</div>
 
 <!-- GENERATE -->
-<div class="generate-box">
-<h3>🔥 Generate License</h3>
-
-<input id="days" placeholder="Days (7 / 15 / 30)">
+<div class="generate">
+<input id="days" placeholder="Days (7/15/30)">
 <button class="genbtn" onclick="generate()">Generate</button>
 </div>
 
-<!-- TABLE -->
-<table>
+<!-- SEARCH -->
+<input class="search" id="search" onkeyup="filterTable()" placeholder="Search license...">
+
+<table id="table">
+<thead>
 <tr>
 <th>ID</th>
 <th>License</th>
@@ -119,44 +100,77 @@ color:white;
 <th>Expiry</th>
 <th>Actions</th>
 </tr>
-
-{% for row in data %}
-<tr>
-<td>{{row[0]}}</td>
-<td>{{row[1]}}</td>
-<td>{{row[2]}}</td>
-<td>{{row[3]}}</td>
-<td>{{row[4]}}</td>
-<td>
-
-<button class="copy" onclick="copyKey('{{row[1]}}')">Copy</button>
-<button class="del" onclick="del('{{row[1]}}')">Delete</button>
-<button class="ext" onclick="ext('{{row[1]}}')">Extend</button>
-
-</td>
-</tr>
-{% endfor %}
-
+</thead>
+<tbody id="tbody"></tbody>
 </table>
+
+<div class="toast" id="toast">Done</div>
 
 <script>
 
+let API_KEY = "coc_api_9x7f2k_secure";
+
+/* TOAST */
+function showToast(msg){
+let t=document.getElementById("toast");
+t.innerText=msg;
+t.style.display="block";
+setTimeout(()=>t.style.display="none",2000);
+}
+
+/* LOAD TABLE LIVE */
+function loadTable(){
+fetch("/api/licenses")
+.then(r=>r.json())
+.then(data=>{
+let html="";
+
+data.forEach(row=>{
+html+=`
+<tr>
+<td>${row[0]}</td>
+<td>${row[1]}</td>
+<td>${row[2]||""}</td>
+<td>${row[3]}</td>
+<td>${row[4]}</td>
+<td>
+<button class="copy" onclick="copyKey('${row[1]}')">Copy</button>
+<button class="del" onclick="del('${row[1]}')">Delete</button>
+</td>
+</tr>
+`;
+});
+
+document.getElementById("tbody").innerHTML=html;
+});
+}
+
 /* GENERATE */
 function generate(){
-let days = document.getElementById("days").value;
+let days=document.getElementById("days").value;
 
 fetch("/generate",{
 method:"POST",
 headers:{
 "Content-Type":"application/json",
-"x-api-key":"coc_api_9x7f2k_secure"
+"x-api-key":API_KEY
 },
 body:JSON.stringify({days:days})
 })
 .then(r=>r.json())
 .then(d=>{
-alert("Generated: " + d.license);
-location.reload();
+
+if(d.license){
+
+navigator.clipboard.writeText(d.license); // AUTO COPY
+showToast("Generated & Copied: " + d.license);
+
+loadTable(); // LIVE UPDATE
+
+}else{
+showToast("Error generating");
+}
+
 });
 }
 
@@ -166,24 +180,28 @@ fetch("/delete",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({license:k})
-}).then(()=>location.reload());
+})
+.then(()=>{showToast("Deleted");loadTable();});
 }
 
-/* EXTEND */
-function ext(k){
-let d = prompt("Enter days to extend:");
-fetch("/extend",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({license:k,days:d})
-}).then(()=>location.reload());
+/* COPY */
+function copyKey(k){
+navigator.clipboard.writeText(k);
+showToast("Copied: " + k);
 }
 
-/* COPY LICENSE */
-function copyKey(key){
-navigator.clipboard.writeText(key);
-alert("Copied: " + key);
+/* SEARCH */
+function filterTable(){
+let input=document.getElementById("search").value.toLowerCase();
+let rows=document.querySelectorAll("#tbody tr");
+
+rows.forEach(r=>{
+r.style.display=r.innerText.toLowerCase().includes(input)?"":"none";
+});
 }
+
+/* INIT */
+loadTable();
 
 </script>
 
