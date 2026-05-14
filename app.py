@@ -9,10 +9,13 @@ app.secret_key = "LAKHAN_84411004778"
 
 DB_FILE = "database.db"
 
-ADMIN_USER = "lakhan_8956"
-ADMIN_PASS = "Lakhan@21"
+# 🔥 YOUR API KEY (UPDATED)
 ADMIN_API_KEY = "LAKHAN_84411004778"
 
+ADMIN_USER = "lakhan_8956"
+ADMIN_PASS = "Lakhan@21"
+
+# ---------------- DB INIT ----------------
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -32,10 +35,12 @@ def init_db():
 
 init_db()
 
+# ---------------- KEY GEN ----------------
 def generate_key():
     return ''.join(random.choices(string.ascii_uppercase, k=10)) + \
            ''.join(random.choices(string.digits, k=5))
 
+# ---------------- HOME ----------------
 @app.route("/")
 def home():
     return "COC License Server Running"
@@ -64,7 +69,7 @@ def dashboard():
 
     return render_template("dashboard.html")
 
-# ---------------- GET LICENSES (LIVE TABLE) ----------------
+# ---------------- LIVE DATA ----------------
 @app.route("/api/licenses")
 def api_licenses():
     conn = sqlite3.connect(DB_FILE)
@@ -72,7 +77,6 @@ def api_licenses():
     c.execute("SELECT * FROM licenses ORDER BY id DESC")
     data = c.fetchall()
     conn.close()
-
     return jsonify(data)
 
 # ---------------- GENERATE ----------------
@@ -81,15 +85,24 @@ def generate():
     if request.headers.get("x-api-key") != ADMIN_API_KEY:
         return jsonify({"status": "unauthorized"}), 401
 
-    days = int(request.json.get("days", 7))
+    try:
+        data = request.json or {}
+        days = int(str(data.get("days", 7)).strip())
+        if days <= 0:
+            return jsonify({"status": "invalid_days"}), 400
+    except:
+        return jsonify({"status": "invalid_input"}), 400
+
     key = generate_key()
     expiry = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
-    c.execute("INSERT INTO licenses (license_key, active, expiry) VALUES (?,?,?)",
-              (key, 1, expiry))
+    c.execute(
+        "INSERT INTO licenses (license_key, active, expiry) VALUES (?,?,?)",
+        (key, 1, expiry)
+    )
 
     conn.commit()
     conn.close()
@@ -116,5 +129,6 @@ def delete():
 
     return jsonify({"status": "deleted"})
 
+# ---------------- RUN ----------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
