@@ -10,7 +10,6 @@ DB_FILE = "database.db"
 # ---------------- ADMIN ----------------
 ADMIN_USER = "lakhan_8956"
 ADMIN_PASS = "Lakhan@21"
-
 ADMIN_API_KEY = "LAKHAN_84411004778"
 
 # ---------------- DB INIT ----------------
@@ -28,10 +27,32 @@ def init_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            license_key TEXT,
+            action TEXT,
+            time TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 init_db()
+
+# ---------------- LOG FUNCTION ----------------
+def add_log(key, action):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    c.execute(
+        "INSERT INTO logs (license_key, action, time) VALUES (?,?,?)",
+        (key, action, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    )
+
+    conn.commit()
+    conn.close()
 
 # ---------------- HOME ----------------
 @app.route("/")
@@ -96,12 +117,10 @@ def logout():
     session.clear()
     return redirect("/login")
 
-# ---------------- GENERATE LICENSE ----------------
+# ---------------- GENERATE ----------------
 @app.route("/generate", methods=["POST"])
 def generate():
-    api_key = request.headers.get("x-api-key")
-
-    if api_key != ADMIN_API_KEY:
+    if request.headers.get("x-api-key") != ADMIN_API_KEY:
         return jsonify({"status": "unauthorized"}), 401
 
     data = request.json
@@ -120,12 +139,9 @@ def generate():
         )
         conn.commit()
 
-        return jsonify({
-            "status": "created",
-            "license": key,
-            "days": days,
-            "expiry": expiry
-        })
+        add_log(key, "generated")
+
+        return jsonify({"status": "created", "license": key, "expiry": expiry})
 
     except:
         return jsonify({"status": "exists"})
@@ -133,7 +149,7 @@ def generate():
     finally:
         conn.close()
 
-# ---------------- VERIFY LICENSE ----------------
+# ---------------- VERIFY ----------------
 @app.route("/verify", methods=["POST"])
 def verify():
     data = request.json
@@ -166,12 +182,65 @@ def verify():
         c.execute("UPDATE licenses SET hwid=? WHERE license_key=?", (hwid, key))
         conn.commit()
         conn.close()
+
+        add_log(key, "bound")
+
         return jsonify({"status": "bound"})
 
     if saved_hwid != hwid:
         return jsonify({"status": "hwid mismatch"})
 
+    add_log(key, "verified")
+
     return jsonify({"status": "valid"})
+
+# ---------------- DELETE ----------------
+@app.route("/delete", methods=["POST"])
+def delete():
+    if not session.get("admin"):
+        return jsonify({"status": "unauthorized"})
+
+    key = request.json.get("license")
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    c.execute("DELETE FROM licenses WHERE license_key=?", (key,))
+    conn.commit()
+    conn.close()
+
+    add_log(key, "deleted")
+
+    return jsonify({"status": "deleted"})
+
+# ---------------- EXTEND ----------------
+@app.route("/extend", methods=["POST"])
+def extend():
+    if not session.get("admin"):
+        return jsonify({"status": "unauthorized"})
+
+    key = request.json.get("license")
+    days = int(request.json.get("days", 7))
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    c.execute("SELECT expiry FROM licenses WHERE license_key=?", (key,))
+    row = c.fetchone()
+
+    if not row:
+        return jsonify({"status": "not found"})
+
+    old = datetime.strptime(row[0], "%Y-%m-%d")
+    new_expiry = (old + timedelta(days=days)).strftime("%Y-%m-%d")
+
+    c.execute("UPDATE licenses SET expiry=? WHERE license_key=?", (new_expiry, key))
+    conn.commit()
+    conn.close()
+
+    add_log(key, f"extended +{days} days")
+
+    return jsonify({"status": "extended", "expiry": new_expiry})
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
