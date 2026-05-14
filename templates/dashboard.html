@@ -90,7 +90,7 @@ display:none;
 <!-- SEARCH -->
 <input class="search" id="search" onkeyup="filterTable()" placeholder="Search license...">
 
-<table id="table">
+<table>
 <thead>
 <tr>
 <th>ID</th>
@@ -101,16 +101,14 @@ display:none;
 <th>Actions</th>
 </tr>
 </thead>
+
 <tbody id="tbody"></tbody>
 </table>
 
-<div class="toast" id="toast">Done</div>
+<div class="toast" id="toast"></div>
 
 <script>
 
-let API_KEY = "coc_api_9x7f2k_secure";
-
-/* TOAST */
 function showToast(msg){
 let t=document.getElementById("toast");
 t.innerText=msg;
@@ -118,7 +116,7 @@ t.style.display="block";
 setTimeout(()=>t.style.display="none",2000);
 }
 
-/* LOAD TABLE LIVE */
+/* LOAD LIVE TABLE */
 function loadTable(){
 fetch("/api/licenses")
 .then(r=>r.json())
@@ -130,7 +128,7 @@ html+=`
 <tr>
 <td>${row[0]}</td>
 <td>${row[1]}</td>
-<td>${row[2]||""}</td>
+<td>${row[2] || ""}</td>
 <td>${row[3]}</td>
 <td>${row[4]}</td>
 <td>
@@ -149,11 +147,16 @@ document.getElementById("tbody").innerHTML=html;
 function generate(){
 let days=document.getElementById("days").value;
 
+if(!days || isNaN(days)){
+showToast("Enter valid days");
+return;
+}
+
 fetch("/generate",{
 method:"POST",
 headers:{
 "Content-Type":"application/json",
-"x-api-key":API_KEY
+"x-api-key":"LAKHAN_84411004778"
 },
 body:JSON.stringify({days:days})
 })
@@ -161,14 +164,11 @@ body:JSON.stringify({days:days})
 .then(d=>{
 
 if(d.license){
-
 navigator.clipboard.writeText(d.license); // AUTO COPY
 showToast("Generated & Copied: " + d.license);
-
-loadTable(); // LIVE UPDATE
-
+loadTable();
 }else{
-showToast("Error generating");
+showToast("Error: " + d.status);
 }
 
 });
