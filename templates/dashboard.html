@@ -1,132 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>COC License Dashboard</title>
+    <title>License Dashboard</title>
     <style>
-        body {
-            margin:0;
-            font-family: Arial;
-            background:#0f172a;
-            color:white;
-        }
-
-        .header {
-            background:#111827;
-            padding:15px;
-            font-size:20px;
-            font-weight:bold;
-        }
-
-        .container {
-            padding:20px;
-        }
-
-        .stats {
-            display:flex;
-            gap:10px;
-            margin-bottom:20px;
-        }
-
-        .card {
-            background:#1f2937;
-            padding:15px;
-            border-radius:10px;
-            flex:1;
-            text-align:center;
-        }
-
-        .card h2 {
-            margin:5px 0 0 0;
-        }
-
-        input {
-            padding:10px;
-            width:300px;
-            margin-bottom:15px;
-            border-radius:5px;
-            border:none;
-        }
-
-        table {
-            width:100%;
-            border-collapse:collapse;
-            background:#111827;
-            border-radius:10px;
-            overflow:hidden;
-        }
-
-        th, td {
-            padding:10px;
-            border-bottom:1px solid #374151;
-            text-align:left;
-        }
-
-        th {
-            background:#1f2937;
-        }
-
-        .btn {
-            padding:5px 10px;
-            background:red;
-            border:none;
-            color:white;
-            border-radius:5px;
-            cursor:pointer;
-        }
-
-        .btn:hover {
-            background:darkred;
-        }
+        body {margin:0;font-family:Arial;background:#0f172a;color:white;}
+        .header{padding:15px;background:#111827;font-size:20px;}
+        .stats{display:flex;gap:10px;padding:20px;}
+        .card{flex:1;background:#1f2937;padding:15px;border-radius:10px;text-align:center;}
+        table{width:100%;border-collapse:collapse;}
+        th,td{padding:10px;border-bottom:1px solid #374151;}
+        th{background:#1f2937;}
+        button{padding:5px 10px;border:none;border-radius:5px;cursor:pointer;}
+        .del{background:red;color:white;}
+        .ext{background:green;color:white;}
     </style>
 </head>
 <body>
 
-<div class="header">
-    🔐 COC License Admin Dashboard
-    <a href="/logout" style="float:right;color:white;">Logout</a>
+<div class="header">🔐 License Dashboard <a href="/logout" style="float:right;color:white;">Logout</a></div>
+
+<div class="stats">
+    <div class="card">Total<br><h2>{{total}}</h2></div>
+    <div class="card">Active<br><h2>{{active}}</h2></div>
+    <div class="card">Inactive<br><h2>{{inactive}}</h2></div>
 </div>
 
-<div class="container">
+<table>
+<tr>
+<th>ID</th><th>License</th><th>HWID</th><th>Active</th><th>Expiry</th><th>Actions</th>
+</tr>
 
-    <div class="stats">
-        <div class="card">📦 Total<br><h2>{{total}}</h2></div>
-        <div class="card">🟢 Active<br><h2>{{active}}</h2></div>
-        <div class="card">🔴 Inactive<br><h2>{{inactive}}</h2></div>
-    </div>
+{% for row in data %}
+<tr>
+<td>{{row[0]}}</td>
+<td>{{row[1]}}</td>
+<td>{{row[2]}}</td>
+<td>{{row[3]}}</td>
+<td>{{row[4]}}</td>
+<td>
+<button class="del" onclick="del('{{row[1]}}')">Delete</button>
+<button class="ext" onclick="ext('{{row[1]}}')">Extend</button>
+</td>
+</tr>
+{% endfor %}
 
-    <input type="text" id="search" placeholder="Search license..." onkeyup="filterTable()">
-
-    <table id="table">
-        <tr>
-            <th>ID</th>
-            <th>License</th>
-            <th>HWID</th>
-            <th>Active</th>
-            <th>Expiry</th>
-        </tr>
-
-        {% for row in data %}
-        <tr>
-            <td>{{row[0]}}</td>
-            <td>{{row[1]}}</td>
-            <td>{{row[2]}}</td>
-            <td>{{row[3]}}</td>
-            <td>{{row[4]}}</td>
-        </tr>
-        {% endfor %}
-    </table>
-
-</div>
+</table>
 
 <script>
-function filterTable() {
-    let input = document.getElementById("search").value.toLowerCase();
-    let rows = document.getElementById("table").getElementsByTagName("tr");
+function del(k){
+fetch('/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({license:k})})
+.then(()=>location.reload())
+}
 
-    for (let i = 1; i < rows.length; i++) {
-        rows[i].style.display =
-            rows[i].innerText.toLowerCase().includes(input) ? "" : "none";
-    }
+function ext(k){
+let d=prompt("Days?");
+fetch('/extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({license:k,days:d})})
+.then(()=>location.reload())
 }
 </script>
 
