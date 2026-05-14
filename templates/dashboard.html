@@ -4,73 +4,78 @@
     <title>COC License Dashboard</title>
     <style>
         body {
-            margin: 0;
+            margin:0;
             font-family: Arial;
-            background: #0f172a;
-            color: white;
+            background:#0f172a;
+            color:white;
         }
 
         .header {
-            background: #111827;
-            padding: 15px 20px;
-            font-size: 20px;
-            font-weight: bold;
+            background:#111827;
+            padding:15px;
+            font-size:20px;
+            font-weight:bold;
         }
 
         .container {
-            padding: 20px;
+            padding:20px;
         }
 
         .stats {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            display:flex;
+            gap:10px;
+            margin-bottom:20px;
         }
 
         .card {
-            background: #1f2937;
-            padding: 15px;
-            border-radius: 10px;
-            flex: 1;
+            background:#1f2937;
+            padding:15px;
+            border-radius:10px;
+            flex:1;
+            text-align:center;
+        }
+
+        .card h2 {
+            margin:5px 0 0 0;
         }
 
         input {
-            padding: 10px;
-            width: 300px;
-            border-radius: 6px;
-            border: none;
-            margin-bottom: 15px;
+            padding:10px;
+            width:300px;
+            margin-bottom:15px;
+            border-radius:5px;
+            border:none;
         }
 
         table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #111827;
-            border-radius: 10px;
-            overflow: hidden;
+            width:100%;
+            border-collapse:collapse;
+            background:#111827;
+            border-radius:10px;
+            overflow:hidden;
         }
 
         th, td {
-            padding: 12px;
-            border-bottom: 1px solid #374151;
-            text-align: left;
+            padding:10px;
+            border-bottom:1px solid #374151;
+            text-align:left;
         }
 
         th {
-            background: #1f2937;
+            background:#1f2937;
         }
 
         .btn {
-            padding: 6px 10px;
-            background: red;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+            padding:5px 10px;
+            background:red;
+            border:none;
+            color:white;
+            border-radius:5px;
+            cursor:pointer;
         }
 
         .btn:hover {
-            background: darkred;
+            background:darkred;
         }
     </style>
 </head>
@@ -78,21 +83,19 @@
 
 <div class="header">
     🔐 COC License Admin Dashboard
+    <a href="/logout" style="float:right;color:white;">Logout</a>
 </div>
 
 <div class="container">
 
-    <!-- STATS -->
     <div class="stats">
-        <div class="card">📦 Total Licenses</div>
-        <div class="card">🟢 Active</div>
-        <div class="card">🔴 Inactive</div>
+        <div class="card">📦 Total<br><h2>{{total}}</h2></div>
+        <div class="card">🟢 Active<br><h2>{{active}}</h2></div>
+        <div class="card">🔴 Inactive<br><h2>{{inactive}}</h2></div>
     </div>
 
-    <!-- SEARCH -->
     <input type="text" id="search" placeholder="Search license..." onkeyup="filterTable()">
 
-    <!-- TABLE -->
     <table id="table">
         <tr>
             <th>ID</th>
@@ -100,7 +103,6 @@
             <th>HWID</th>
             <th>Active</th>
             <th>Expiry</th>
-            <th>Action</th>
         </tr>
 
         {% for row in data %}
@@ -110,9 +112,6 @@
             <td>{{row[2]}}</td>
             <td>{{row[3]}}</td>
             <td>{{row[4]}}</td>
-            <td>
-                <button class="btn" onclick="deleteKey('{{row[1]}}')">Delete</button>
-            </td>
         </tr>
         {% endfor %}
     </table>
@@ -125,17 +124,9 @@ function filterTable() {
     let rows = document.getElementById("table").getElementsByTagName("tr");
 
     for (let i = 1; i < rows.length; i++) {
-        let text = rows[i].innerText.toLowerCase();
-        rows[i].style.display = text.includes(input) ? "" : "none";
+        rows[i].style.display =
+            rows[i].innerText.toLowerCase().includes(input) ? "" : "none";
     }
-}
-
-function deleteKey(key) {
-    fetch("/delete", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({license: key})
-    }).then(() => location.reload());
 }
 </script>
 
