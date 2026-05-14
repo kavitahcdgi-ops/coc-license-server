@@ -1,33 +1,109 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>License Dashboard</title>
-    <style>
-        body {margin:0;font-family:Arial;background:#0f172a;color:white;}
-        .header{padding:15px;background:#111827;font-size:20px;}
-        .stats{display:flex;gap:10px;padding:20px;}
-        .card{flex:1;background:#1f2937;padding:15px;border-radius:10px;text-align:center;}
-        table{width:100%;border-collapse:collapse;}
-        th,td{padding:10px;border-bottom:1px solid #374151;}
-        th{background:#1f2937;}
-        button{padding:5px 10px;border:none;border-radius:5px;cursor:pointer;}
-        .del{background:red;color:white;}
-        .ext{background:green;color:white;}
-    </style>
+<title>License Dashboard</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#0f172a;
+color:white;
+}
+
+.header{
+padding:15px;
+background:#111827;
+font-size:20px;
+font-weight:bold;
+}
+
+.stats{
+display:flex;
+gap:10px;
+padding:20px;
+}
+
+.card{
+flex:1;
+background:#1f2937;
+padding:15px;
+border-radius:12px;
+text-align:center;
+}
+
+.generate-box{
+margin:20px;
+padding:20px;
+background:#1f2937;
+border-radius:12px;
+}
+
+input{
+padding:10px;
+border-radius:8px;
+border:none;
+margin-right:10px;
+width:150px;
+}
+
+button{
+padding:10px 15px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+}
+
+.genbtn{background:green;color:white;}
+
+.del{background:red;color:white;}
+.ext{background:#2563eb;color:white;}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:10px;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid #374151;
+}
+
+th{background:#1f2937;}
+</style>
+
 </head>
+
 <body>
 
-<div class="header">🔐 License Dashboard <a href="/logout" style="float:right;color:white;">Logout</a></div>
+<div class="header">
+🔐 COC License Dashboard
+<a href="/logout" style="float:right;color:white;">Logout</a>
+</div>
 
 <div class="stats">
-    <div class="card">Total<br><h2>{{total}}</h2></div>
-    <div class="card">Active<br><h2>{{active}}</h2></div>
-    <div class="card">Inactive<br><h2>{{inactive}}</h2></div>
+<div class="card">📦 Total<br><h2>{{total}}</h2></div>
+<div class="card">🟢 Active<br><h2>{{active}}</h2></div>
+<div class="card">🔴 Inactive<br><h2>{{inactive}}</h2></div>
+</div>
+
+<div class="generate-box">
+<h3>🔥 Generate License</h3>
+
+<input id="days" placeholder="Days (7/15/30)">
+<button class="genbtn" onclick="generate()">Generate</button>
+
 </div>
 
 <table>
 <tr>
-<th>ID</th><th>License</th><th>HWID</th><th>Active</th><th>Expiry</th><th>Actions</th>
+<th>ID</th>
+<th>License</th>
+<th>HWID</th>
+<th>Status</th>
+<th>Expiry</th>
+<th>Actions</th>
 </tr>
 
 {% for row in data %}
@@ -47,16 +123,42 @@
 </table>
 
 <script>
+
+function generate(){
+let days = document.getElementById("days").value;
+
+fetch("/generate",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"x-api-key":"coc_api_9x7f2k_secure"
+},
+body:JSON.stringify({days:days})
+})
+.then(r=>r.json())
+.then(d=>{
+alert("Generated: " + d.license);
+location.reload();
+});
+}
+
 function del(k){
-fetch('/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({license:k})})
-.then(()=>location.reload())
+fetch("/delete",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({license:k})
+}).then(()=>location.reload());
 }
 
 function ext(k){
 let d=prompt("Days?");
-fetch('/extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({license:k,days:d})})
-.then(()=>location.reload())
+fetch("/extend",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({license:k,days:d})
+}).then(()=>location.reload());
 }
+
 </script>
 
 </body>
