@@ -9,12 +9,10 @@ app.secret_key = "LAKHAN_84411004778"
 
 DB_FILE = "database.db"
 
-# ---------------- ADMIN ----------------
 ADMIN_USER = "lakhan_8956"
 ADMIN_PASS = "Lakhan@21"
 ADMIN_API_KEY = "LAKHAN_84411004778"
 
-# ---------------- DB ----------------
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -43,31 +41,22 @@ def init_db():
 
 init_db()
 
-# ---------------- LOG ----------------
 def add_log(key, action):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-
-    c.execute(
-        "INSERT INTO logs (license_key, action, time) VALUES (?,?,?)",
-        (key, action, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    )
-
+    c.execute("INSERT INTO logs (license_key, action, time) VALUES (?,?,?)",
+              (key, action, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
     conn.close()
 
-# ---------------- RANDOM KEY GENERATOR ----------------
 def generate_key():
-    letters = ''.join(random.choices(string.ascii_uppercase, k=10))
-    numbers = ''.join(random.choices(string.digits, k=5))
-    return letters + numbers
+    return ''.join(random.choices(string.ascii_uppercase, k=10)) + ''.join(random.choices(string.digits, k=5))
 
-# ---------------- HOME ----------------
 @app.route("/")
 def home():
     return "COC License Server V2 Running"
 
-# ---------------- LOGIN ----------------
+# ---------------- LOGIN (NOW UI PAGE) ----------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -80,15 +69,13 @@ def login():
 
         return "Invalid login"
 
-    return """
-    <form method="POST">
-        <input name="username" placeholder="Username"><br><br>
-        <input name="password" type="password" placeholder="Password"><br><br>
-        <button type="submit">Login</button>
-    </form>
-    """
+    return render_template("login.html")
 
-# ---------------- DASHBOARD ----------------
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
 @app.route("/dashboard")
 def dashboard():
     if not session.get("admin"):
@@ -111,96 +98,34 @@ def dashboard():
 
     conn.close()
 
-    return render_template(
-        "dashboard.html",
-        data=data,
-        total=total,
-        active=active,
-        inactive=inactive
-    )
+    return render_template("dashboard.html",
+                           data=data,
+                           total=total,
+                           active=active,
+                           inactive=inactive)
 
-# ---------------- GENERATE ----------------
 @app.route("/generate", methods=["POST"])
 def generate():
     if request.headers.get("x-api-key") != ADMIN_API_KEY:
         return jsonify({"status": "unauthorized"}), 401
 
-    data = request.json
-    days = int(data.get("days", 7))
-
+    days = int(request.json.get("days", 7))
     key = generate_key()
+
     expiry = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
-    try:
-        c.execute(
-            "INSERT INTO licenses (license_key, active, expiry) VALUES (?,?,?)",
-            (key, 1, expiry)
-        )
-        conn.commit()
-
-        add_log(key, "generated")
-
-        return jsonify({
-            "status": "created",
-            "license": key,
-            "expiry": expiry
-        })
-
-    except:
-        return jsonify({"status": "error"})
-
-    finally:
-        conn.close()
-
-# ---------------- VERIFY ----------------
-@app.route("/verify", methods=["POST"])
-def verify():
-    data = request.json
-    key = data.get("license")
-    hwid = data.get("hwid")
-
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("SELECT hwid, expiry, active FROM licenses WHERE license_key=?", (key,))
-    row = c.fetchone()
+    c.execute("INSERT INTO licenses (license_key, active, expiry) VALUES (?,?,?)",
+              (key, 1, expiry))
+    conn.commit()
     conn.close()
 
-    if not row:
-        return jsonify({"status": "invalid"})
+    add_log(key, "generated")
 
-    saved_hwid, expiry, active = row
+    return jsonify({"status": "created", "license": key})
 
-    if active != 1:
-        return jsonify({"status": "disabled"})
-
-    if expiry < today:
-        return jsonify({"status": "expired"})
-
-    if saved_hwid is None:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("UPDATE licenses SET hwid=? WHERE license_key=?", (hwid, key))
-        conn.commit()
-        conn.close()
-
-        add_log(key, "bound")
-
-        return jsonify({"status": "bound"})
-
-    if saved_hwid != hwid:
-        return jsonify({"status": "hwid mismatch"})
-
-    add_log(key, "verified")
-
-    return jsonify({"status": "valid"})
-
-# ---------------- DELETE ----------------
 @app.route("/delete", methods=["POST"])
 def delete():
     if not session.get("admin"):
@@ -210,7 +135,6 @@ def delete():
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-
     c.execute("DELETE FROM licenses WHERE license_key=?", (key,))
     conn.commit()
     conn.close()
@@ -219,7 +143,6 @@ def delete():
 
     return jsonify({"status": "deleted"})
 
-# ---------------- EXTEND ----------------
 @app.route("/extend", methods=["POST"])
 def extend():
     if not session.get("admin"):
@@ -232,22 +155,17 @@ def extend():
     c = conn.cursor()
 
     c.execute("SELECT expiry FROM licenses WHERE license_key=?", (key,))
-    row = c.fetchone()
+    old = c.fetchone()[0]
 
-    if not row:
-        return jsonify({"status": "not found"})
+    new_exp = (datetime.strptime(old, "%Y-%m-%d") + timedelta(days=days)).strftime("%Y-%m-%d")
 
-    old = datetime.strptime(row[0], "%Y-%m-%d")
-    new_expiry = (old + timedelta(days=days)).strftime("%Y-%m-%d")
-
-    c.execute("UPDATE licenses SET expiry=? WHERE license_key=?", (new_expiry, key))
+    c.execute("UPDATE licenses SET expiry=? WHERE license_key=?", (new_exp, key))
     conn.commit()
     conn.close()
 
-    add_log(key, f"extended +{days}")
+    add_log(key, f"extended {days}")
 
-    return jsonify({"status": "extended", "expiry": new_expiry})
+    return jsonify({"status": "extended"})
 
-# ---------------- RUN ----------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
