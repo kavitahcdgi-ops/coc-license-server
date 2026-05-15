@@ -1,15 +1,17 @@
 from flask import Flask, request, jsonify, render_template, redirect, session
+from flask_cors import CORS
 import sqlite3
 import random
 import string
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
+CORS(app)  # Allow cross-origin requests from any client
 app.secret_key = "LAKHAN_84411004778"
 
 DB_FILE = "database.db"
 
-# 🔥 ADMIN CONFIG
+# ADMIN CONFIG
 ADMIN_API_KEY = "LAKHAN_84411004778"
 ADMIN_USER = "lakhan_8956"
 ADMIN_PASS = "Lakhan@21"
@@ -18,7 +20,6 @@ ADMIN_PASS = "Lakhan@21"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS licenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,7 +29,6 @@ def init_db():
             expiry TEXT
         )
     """)
-
     conn.commit()
     conn.close()
 
@@ -44,7 +44,7 @@ def generate_key():
 def home():
     return "COC License Server Running"
 
-# ---------------- LOGIN ----------------
+# ---------------- LOGIN (optional, for web dashboard) ----------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -52,7 +52,6 @@ def login():
             session["admin"] = True
             return redirect("/dashboard")
         return "Invalid login"
-
     return render_template("login.html")
 
 @app.route("/logout")
@@ -60,16 +59,16 @@ def logout():
     session.clear()
     return redirect("/login")
 
-# ---------------- DASHBOARD ----------------
 @app.route("/dashboard")
 def dashboard():
     if not session.get("admin"):
         return redirect("/login")
     return render_template("dashboard.html")
 
-# ---------------- LIVE DATA ----------------
 @app.route("/api/licenses")
 def api_licenses():
+    if not session.get("admin"):
+        return jsonify({"error": "unauthorized"}), 401
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("SELECT * FROM licenses ORDER BY id DESC")
@@ -82,7 +81,6 @@ def api_licenses():
 def generate():
     if request.headers.get("x-api-key") != ADMIN_API_KEY:
         return jsonify({"status": "unauthorized"}), 401
-
     try:
         data = request.json or {}
         days = int(str(data.get("days", 7)).strip())
@@ -113,7 +111,7 @@ def generate():
 @app.route("/delete", methods=["POST"])
 def delete():
     if not session.get("admin"):
-        return jsonify({"status": "unauthorized"})
+        return jsonify({"status": "unauthorized"}), 401
     key = request.json.get("license")
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -122,23 +120,17 @@ def delete():
     conn.close()
     return jsonify({"status": "deleted"})
 
-# =========================================================
-# ✅ VALIDATION ENDPOINT (client yahi use karega)
-# =========================================================
+# ---------------- VALIDATION ENDPOINT ----------------
 @app.route("/validate", methods=["POST"])
 def validate():
     data = request.json
     key = data.get("key")
-
     if not key:
         return jsonify({"valid": False})
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute(
-        "SELECT license_key, active, expiry FROM licenses WHERE license_key=?",
-        (key,)
-    )
+    c.execute("SELECT license_key, active, expiry FROM licenses WHERE license_key=?", (key,))
     row = c.fetchone()
     conn.close()
 
@@ -146,10 +138,8 @@ def validate():
         return jsonify({"valid": False})
 
     license_key, active, expiry = row
-
     if active != 1:
         return jsonify({"valid": False})
-
     try:
         if expiry < datetime.now().strftime("%Y-%m-%d"):
             return jsonify({"valid": False})
