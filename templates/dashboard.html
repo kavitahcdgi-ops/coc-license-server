@@ -4,7 +4,6 @@
     <title>COC License Dashboard</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <style>
         * {
             margin: 0;
@@ -24,7 +23,6 @@
             margin: auto;
         }
 
-        /* HEADER */
         .header {
             display: flex;
             justify-content: space-between;
@@ -61,7 +59,6 @@
             box-shadow: 0 10px 25px rgba(239,68,68,0.3);
         }
 
-        /* CARD */
         .card {
             background: rgba(15, 23, 42, 0.7);
             border: 1px solid rgba(255,255,255,0.08);
@@ -78,7 +75,6 @@
             color: #fbbf24;
         }
 
-        /* INPUTS */
         input {
             background: rgba(2,6,23,0.8);
             border: 1px solid #334155;
@@ -94,7 +90,6 @@
             box-shadow: 0 0 10px rgba(251,191,36,0.2);
         }
 
-        /* GENERATE */
         .generate-box {
             display: flex;
             gap: 12px;
@@ -120,7 +115,6 @@
             box-shadow: 0 10px 20px rgba(34,197,94,0.3);
         }
 
-        /* SEARCH */
         .search-box {
             margin: 15px 0;
         }
@@ -130,7 +124,6 @@
             max-width: 350px;
         }
 
-        /* TABLE */
         .table-wrapper {
             overflow-x: auto;
             border-radius: 16px;
@@ -163,7 +156,6 @@
             transition: 0.2s;
         }
 
-        /* STATUS */
         .status-badge {
             padding: 4px 10px;
             border-radius: 20px;
@@ -183,8 +175,7 @@
             border: 1px solid #ef4444;
         }
 
-        /* ACTION BUTTONS */
-        .copy-btn, .del-btn, .toggle-btn {
+        .copy-btn, .del-btn {
             padding: 6px 10px;
             border-radius: 12px;
             font-size: 12px;
@@ -197,23 +188,15 @@
             color: black;
         }
 
-        .toggle-btn {
-            background: #3b82f6;
-            color: white;
-        }
-
         .del-btn {
             background: #ef4444;
             color: white;
         }
 
-        .copy-btn:hover,
-        .toggle-btn:hover,
-        .del-btn:hover {
+        .copy-btn:hover, .del-btn:hover {
             transform: scale(1.05);
         }
 
-        /* TOAST */
         .toast {
             position: fixed;
             bottom: 25px;
@@ -226,13 +209,12 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.4);
         }
 
-        /* ANIMATIONS */
-        @keyframes fadeDown {
-            from {opacity:0; transform: translateY(-10px);}
-            to {opacity:1; transform: translateY(0);}
+        .toast.error {
+            border-left: 4px solid #ef4444;
+            background: #1e293b;
+            color: #fecaca;
         }
 
-        /* FOOTER */
         .footer {
             text-align: center;
             margin-top: 20px;
@@ -240,23 +222,19 @@
             color: #64748b;
         }
 
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
-            .generate-box {
-                flex-direction: column;
-            }
+        @keyframes fadeDown {
+            from {opacity:0; transform: translateY(-10px);}
+            to {opacity:1; transform: translateY(0);}
+        }
 
-            input {
-                width: 100%;
-            }
+        @media (max-width: 768px) {
+            .generate-box { flex-direction: column; }
+            input { width: 100%; }
         }
     </style>
 </head>
-
 <body>
-
 <div class="container">
-
     <div class="header">
         <h1>🔐 COC License Manager</h1>
         <a class="logout-btn" href="/logout">Logout</a>
@@ -271,72 +249,62 @@
     </div>
 
     <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Search license / HWID..." onkeyup="filterTable()">
+        <input type="text" id="searchInput" placeholder="🔍 Search license / HWID..." onkeyup="filterTable()">
     </div>
 
     <div class="table-wrapper">
         <table>
             <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>License</th>
-                    <th>HWID</th>
-                    <th>Status</th>
-                    <th>Expiry</th>
-                    <th>Actions</th>
-                </tr>
+                <tr><th>ID</th><th>License</th><th>HWID</th><th>Status</th><th>Expiry</th><th>Actions</th></tr>
             </thead>
             <tbody id="licenseTableBody">
                 <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
             </tbody>
         </table>
     </div>
-
-    <div class="footer">⚔ COC License System</div>
+    <div class="footer">⚔ COC License System | HWID binding active</div>
 </div>
-
 <div class="toast" id="toast"></div>
 
 <script>
     let licensesData = [];
 
-    function showToast(msg) {
+    function showToast(msg, isError = false) {
         const t = document.getElementById("toast");
         t.innerText = msg;
+        t.classList.remove("error");
+        if (isError) t.classList.add("error");
         t.style.display = "block";
-        setTimeout(() => t.style.display = "none", 2000);
+        setTimeout(() => t.style.display = "none", 3000);
     }
 
     async function loadLicenses() {
-        const res = await fetch("/api/licenses");
-        const data = await res.json();
-        licensesData = data;
-        renderTable(data);
+        try {
+            const res = await fetch("/api/licenses");
+            const data = await res.json();
+            licensesData = data;
+            renderTable(data);
+        } catch(e) {
+            showToast("Failed to load licenses", true);
+        }
     }
 
     function renderTable(data) {
         const tbody = document.getElementById("licenseTableBody");
-
         if (!data.length) {
-            tbody.innerHTML = "<tr><td colspan='6'>No data</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='6'>📭 No licenses found</td></tr>";
             return;
         }
-
         tbody.innerHTML = data.map(r => `
             <tr>
                 <td>${r[0]}</td>
                 <td><code>${r[1]}</code></td>
                 <td>${r[2] || "—"}</td>
-                <td>
-                    <span class="status-badge ${r[3] ? 'status-active' : 'status-inactive'}">
-                        ${r[3] ? "Active" : "Inactive"}
-                    </span>
-                </td>
+                <td><span class="status-badge ${r[3] ? 'status-active' : 'status-inactive'}">${r[3] ? "Active" : "Inactive"}</span></td>
                 <td>${r[4]}</td>
                 <td>
-                    <button class="copy-btn" onclick="copyKey('${r[1]}')">Copy</button>
-                    <button class="toggle-btn">Toggle</button>
-                    <button class="del-btn" onclick="deleteLicense('${r[1]}')">Del</button>
+                    <button class="copy-btn" onclick="copyKey('${r[1]}')">📋 Copy</button>
+                    <button class="del-btn" onclick="deleteLicense('${r[1]}')">🗑 Delete</button>
                 </td>
             </tr>
         `).join("");
@@ -344,44 +312,72 @@
 
     async function generateLicense() {
         const days = document.getElementById("days").value;
-        const res = await fetch("/generate", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({days: parseInt(days)})
-        });
+        if (!days || isNaN(days) || parseInt(days) <= 0) {
+            showToast("Please enter a valid number of days", true);
+            return;
+        }
 
-        const data = await res.json();
-        if (data.license) {
-            navigator.clipboard.writeText(data.license);
-            showToast("Generated!");
-            loadLicenses();
+        try {
+            const res = await fetch("/generate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": "LAKHAN_84411004778"   // ✅ FIXED: API key added
+                },
+                body: JSON.stringify({ days: parseInt(days) })
+            });
+
+            const data = await res.json();
+            if (data.license) {
+                navigator.clipboard.writeText(data.license);
+                showToast(`✅ Generated & Copied: ${data.license}`);
+                loadLicenses();  // refresh table
+            } else {
+                showToast(`❌ Error: ${data.status || "Unknown"}`, true);
+            }
+        } catch (err) {
+            showToast("Server error. Please try again.", true);
         }
     }
 
-    function copyKey(k) {
-        navigator.clipboard.writeText(k);
-        showToast("Copied");
+    async function deleteLicense(key) {
+        if (!confirm(`Delete license ${key}?`)) return;
+        try {
+            const res = await fetch("/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ license: key })
+            });
+            if (res.ok) {
+                showToast("✅ License deleted");
+                loadLicenses();
+            } else {
+                showToast("Delete failed", true);
+            }
+        } catch(e) {
+            showToast("Error deleting", true);
+        }
     }
 
-    async function deleteLicense(k) {
-        await fetch("/delete", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({license: k})
-        });
-        loadLicenses();
+    function copyKey(key) {
+        navigator.clipboard.writeText(key);
+        showToast(`📋 Copied: ${key}`);
     }
 
     function filterTable() {
-        const q = document.getElementById("searchInput").value.toLowerCase();
-        renderTable(licensesData.filter(r =>
-            r[1].toLowerCase().includes(q) ||
-            (r[2] || "").toLowerCase().includes(q)
-        ));
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        if (!query) {
+            renderTable(licensesData);
+        } else {
+            const filtered = licensesData.filter(r =>
+                r[1].toLowerCase().includes(query) ||
+                (r[2] && r[2].toLowerCase().includes(query))
+            );
+            renderTable(filtered);
+        }
     }
 
     loadLicenses();
 </script>
-
 </body>
 </html>
