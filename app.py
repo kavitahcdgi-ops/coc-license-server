@@ -12,16 +12,14 @@ CORS(app)
 app.secret_key = "LAKHAN_84411004778"
 
 # ---------- DATABASE CONNECTION ----------
-# Render environment variable se connection string milega
 DATABASE_URL = os.environ.get('DATABASE_URL')
-
 if not DATABASE_URL:
     raise Exception("DATABASE_URL environment variable not set!")
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
-# ---------- INIT DATABASE (table create if not exists) ----------
+# ---------- INIT TABLE ----------
 def init_db():
     conn = get_db_connection()
     c = conn.cursor()
@@ -39,7 +37,6 @@ def init_db():
 
 init_db()
 
-# ---------- HELPER: GENERATE RANDOM LICENSE KEY ----------
 def generate_key():
     return ''.join(random.choices(string.ascii_uppercase, k=10)) + \
            ''.join(random.choices(string.digits, k=5))
@@ -69,7 +66,7 @@ def dashboard():
         return redirect("/login")
     return render_template("dashboard.html")
 
-# ---------- API: GET ALL LICENSES ----------
+# ---------- API: GET ALL LICENSES (with HWID) ----------
 @app.route("/api/licenses")
 def api_licenses():
     if not session.get("admin"):
@@ -79,11 +76,11 @@ def api_licenses():
     c.execute("SELECT * FROM licenses ORDER BY id DESC")
     rows = c.fetchall()
     conn.close()
-    # dashboard.html expects list of lists
-    result = [[row['id'], row['license_key'], row['hwid'], row['active'], row['expiry']] for row in rows]
+    # Dashboard expects list of lists
+    result = [[row['id'], row['license_key'], row['hwid'] or "", row['active'], row['expiry']] for row in rows]
     return jsonify(result)
 
-# ---------- API: GENERATE NEW LICENSE (requires admin API key) ----------
+# ---------- API: GENERATE ----------
 @app.route("/generate", methods=["POST"])
 def generate():
     if request.headers.get("x-api-key") != ADMIN_API_KEY:
@@ -114,7 +111,7 @@ def generate():
         "expiry": expiry
     })
 
-# ---------- API: DELETE LICENSE (admin session required) ----------
+# ---------- API: DELETE ----------
 @app.route("/delete", methods=["POST"])
 def delete():
     if not session.get("admin"):
@@ -127,37 +124,54 @@ def delete():
     conn.close()
     return jsonify({"status": "deleted"})
 
-# ---------- API: VALIDATE LICENSE (for client main.py) ----------
+# ---------- API: VALIDATE (with HWID binding & return expiry) ----------
 @app.route("/validate", methods=["POST"])
 def validate():
     data = request.json
     key = data.get("key")
+    hwid = data.get("hwid")
     if not key:
         return jsonify({"valid": False})
 
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT license_key, active, expiry FROM licenses WHERE license_key=%s", (key,))
+    c.execute("SELECT license_key, hwid, active, expiry FROM licenses WHERE license_key=%s", (key,))
     row = c.fetchone()
-    conn.close()
 
     if not row:
-        return jsonify({"valid": False})
-    license_key, active, expiry = row
+        conn.close()
+        return jsonify({"valid": False, "message": "License key not found"})
+
+    license_key, saved_hwid, active, expiry = row
+
+    # Check active & expiry
     if active != 1:
-        return jsonify({"valid": False})
+        conn.close()
+        return jsonify({"valid": False, "message": "License is inactive"})
     try:
         if expiry < datetime.now().strftime("%Y-%m-%d"):
-            return jsonify({"valid": False})
+            conn.close()
+            return jsonify({"valid": False, "message": "License expired"})
     except:
-        return jsonify({"valid": False})
-    return jsonify({"valid": True})
+        conn.close()
+        return jsonify({"valid": False, "message": "Invalid expiry date"})
 
-# ---------- ADMIN CREDENTIALS (keep same as before) ----------
+    # HWID binding logic
+    if not saved_hwid:
+        # First activation – save HWID
+        c.execute("UPDATE licenses SET hwid=%s WHERE license_key=%s", (hwid, key))
+        conn.commit()
+    elif saved_hwid != hwid:
+        conn.close()
+        return jsonify({"valid": False, "message": "HWID mismatch. This license is locked to another device."})
+
+    conn.close()
+    return jsonify({"valid": True, "expiry": expiry})
+
+# ---------- ADMIN CREDS ----------
 ADMIN_API_KEY = "LAKHAN_84411004778"
 ADMIN_USER = "lakhan_8956"
 ADMIN_PASS = "Lakhan@21"
 
-# ---------- RUN SERVER ----------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
