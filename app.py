@@ -39,6 +39,17 @@ def generate_key():
     return ''.join(random.choices(string.ascii_uppercase, k=10)) + \
            ''.join(random.choices(string.digits, k=5))
 
+def reset_sequence_if_empty():
+    """Reset the id sequence to 1 if table is empty."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM licenses")
+    count = c.fetchone()[0]
+    if count == 0:
+        c.execute("ALTER SEQUENCE licenses_id_seq RESTART WITH 1")
+        conn.commit()
+    conn.close()
+
 @app.route("/")
 def home():
     return "COC License Server Running"
@@ -119,6 +130,10 @@ def delete():
     c.execute("DELETE FROM licenses WHERE license_key=%s", (key,))
     conn.commit()
     conn.close()
+    
+    # Reset sequence if table becomes empty
+    reset_sequence_if_empty()
+    
     return jsonify({"status": "deleted"})
 
 @app.route("/validate", methods=["POST"])
