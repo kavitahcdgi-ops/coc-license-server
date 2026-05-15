@@ -72,7 +72,6 @@ def api_licenses():
     c.execute("SELECT * FROM licenses ORDER BY id DESC")
     rows = c.fetchall()
     conn.close()
-    # Ensure HWID is never None (frontend expects string)
     result = []
     for row in rows:
         result.append([
@@ -97,7 +96,6 @@ def generate():
         return jsonify({"status": "invalid_input"}), 400
 
     key = generate_key()
-    # Use date.today() + days, store as YYYY-MM-DD
     expiry_date = date.today() + timedelta(days=days)
     expiry = expiry_date.strftime("%Y-%m-%d")
 
@@ -145,7 +143,6 @@ def validate():
         conn.close()
         return jsonify({"valid": False, "message": "License inactive"})
 
-    # Compare dates correctly
     try:
         expiry_date = datetime.strptime(expiry, "%Y-%m-%d").date()
         if expiry_date < date.today():
@@ -155,12 +152,9 @@ def validate():
         conn.close()
         return jsonify({"valid": False, "message": "Invalid expiry format"})
 
-    # HWID binding
     if not saved_hwid:
-        # First activation – save HWID
         c.execute("UPDATE licenses SET hwid=%s WHERE license_key=%s", (hwid, key))
         conn.commit()
-        print(f"[DEBUG] HWID saved for {key}: {hwid}")
     elif saved_hwid != hwid:
         conn.close()
         return jsonify({"valid": False, "message": "HWID mismatch"})
