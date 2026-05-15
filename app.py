@@ -1,28 +1,33 @@
 from flask import Flask, request, jsonify, render_template, redirect, session
 from flask_cors import CORS
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import random
 import string
 from datetime import datetime, timedelta
+import os
 
 app = Flask(__name__)
-CORS(app)  # Client (main.py) ko allow karne ke liye
+CORS(app)
 app.secret_key = "LAKHAN_84411004778"
 
-DB_FILE = "database.db"
+# ---------- DATABASE CONNECTION ----------
+# Render environment variable se connection string milega
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# ADMIN CONFIG
-ADMIN_API_KEY = "LAKHAN_84411004778"
-ADMIN_USER = "lakhan_8956"
-ADMIN_PASS = "Lakhan@21"
+if not DATABASE_URL:
+    raise Exception("DATABASE_URL environment variable not set!")
 
-# ---------------- DB INIT ----------------
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+# ---------- INIT DATABASE (table create if not exists) ----------
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("""
         CREATE TABLE IF NOT EXISTS licenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             license_key TEXT UNIQUE,
             hwid TEXT,
             active INTEGER DEFAULT 1,
@@ -34,17 +39,16 @@ def init_db():
 
 init_db()
 
-# ---------------- KEY GEN ----------------
+# ---------- HELPER: GENERATE RANDOM LICENSE KEY ----------
 def generate_key():
     return ''.join(random.choices(string.ascii_uppercase, k=10)) + \
            ''.join(random.choices(string.digits, k=5))
 
-# ---------------- HOME ----------------
+# ---------- WEB PAGES ----------
 @app.route("/")
 def home():
     return "COC License Server Running"
 
-# ---------------- LOGIN (Web Admin) ----------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -59,26 +63,27 @@ def logout():
     session.clear()
     return redirect("/login")
 
-# ---------------- DASHBOARD (Web Admin) ----------------
 @app.route("/dashboard")
 def dashboard():
     if not session.get("admin"):
         return redirect("/login")
     return render_template("dashboard.html")
 
-# ---------------- API: Get all licenses ----------------
+# ---------- API: GET ALL LICENSES ----------
 @app.route("/api/licenses")
 def api_licenses():
     if not session.get("admin"):
         return jsonify({"error": "unauthorized"}), 401
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = get_db_connection()
+    c = conn.cursor(cursor_factory=RealDictCursor)
     c.execute("SELECT * FROM licenses ORDER BY id DESC")
-    data = c.fetchall()
+    rows = c.fetchall()
     conn.close()
-    return jsonify(data)
+    # dashboard.html expects list of lists
+    result = [[row['id'], row['license_key'], row['hwid'], row['active'], row['expiry']] for row in rows]
+    return jsonify(result)
 
-# ---------------- API: Generate license (Admin API key) ----------------
+# ---------- API: GENERATE NEW LICENSE (requires admin API key) ----------
 @app.route("/generate", methods=["POST"])
 def generate():
     if request.headers.get("x-api-key") != ADMIN_API_KEY:
@@ -94,10 +99,10 @@ def generate():
     key = generate_key()
     expiry = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute(
-        "INSERT INTO licenses (license_key, hwid, active, expiry) VALUES (?,?,?,?)",
+        "INSERT INTO licenses (license_key, hwid, active, expiry) VALUES (%s, %s, %s, %s)",
         (key, "", 1, expiry)
     )
     conn.commit()
@@ -109,20 +114,20 @@ def generate():
         "expiry": expiry
     })
 
-# ---------------- API: Delete license (Web admin session) ----------------
+# ---------- API: DELETE LICENSE (admin session required) ----------
 @app.route("/delete", methods=["POST"])
 def delete():
     if not session.get("admin"):
         return jsonify({"status": "unauthorized"}), 401
     key = request.json.get("license")
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("DELETE FROM licenses WHERE license_key=?", (key,))
+    c.execute("DELETE FROM licenses WHERE license_key=%s", (key,))
     conn.commit()
     conn.close()
     return jsonify({"status": "deleted"})
 
-# ---------------- API: Validate license for Client ----------------
+# ---------- API: VALIDATE LICENSE (for client main.py) ----------
 @app.route("/validate", methods=["POST"])
 def validate():
     data = request.json
@@ -130,9 +135,9 @@ def validate():
     if not key:
         return jsonify({"valid": False})
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT license_key, active, expiry FROM licenses WHERE license_key=?", (key,))
+    c.execute("SELECT license_key, active, expiry FROM licenses WHERE license_key=%s", (key,))
     row = c.fetchone()
     conn.close()
 
@@ -148,5 +153,11 @@ def validate():
         return jsonify({"valid": False})
     return jsonify({"valid": True})
 
+# ---------- ADMIN CREDENTIALS (keep same as before) ----------
+ADMIN_API_KEY = "LAKHAN_84411004778"
+ADMIN_USER = "lakhan_8956"
+ADMIN_PASS = "Lakhan@21"
+
+# ---------- RUN SERVER ----------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
