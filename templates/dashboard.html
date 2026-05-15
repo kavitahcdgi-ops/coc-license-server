@@ -1,149 +1,413 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Dashboard</title>
-<style>
-body{
-margin:0;
-font-family:Arial;
-background:#0f172a;
-color:white;
-}
-.header{
-padding:15px;
-background:#111827;
-font-size:20px;
-}
-.generate{
-margin:20px;
-padding:20px;
-background:#1f2937;
-border-radius:12px;
-}
-input{
-padding:10px;
-border-radius:8px;
-border:none;
-width:160px;
-}
-button{
-padding:8px 12px;
-border:none;
-border-radius:8px;
-cursor:pointer;
-}
-.genbtn{background:green;color:white;}
-.search{
-margin:20px;
-padding:10px;
-width:300px;
-border-radius:8px;
-border:none;
-}
-table{
-width:100%;
-border-collapse:collapse;
-}
-th,td{
-padding:10px;
-border-bottom:1px solid #374151;
-}
-th{background:#1f2937;}
-.copy{background:#f59e0b;color:black;}
-.del{background:red;color:white;}
-.toast{
-position:fixed;
-bottom:20px;
-right:20px;
-background:#22c55e;
-padding:10px 15px;
-border-radius:8px;
-display:none;
-}
-</style>
+    <title>COC License Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f1f5f9;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .header h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .logout-btn {
+            background: #ef4444;
+            padding: 8px 20px;
+            border-radius: 30px;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .logout-btn:hover {
+            background: #dc2626;
+            transform: scale(1.02);
+        }
+
+        /* Generate Card */
+        .card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(5px);
+            border-radius: 24px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        .card-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #fbbf24;
+        }
+        .generate-box {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .generate-box input {
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 12px 20px;
+            border-radius: 40px;
+            color: white;
+            font-size: 16px;
+            width: 200px;
+            outline: none;
+            transition: 0.2s;
+        }
+        .generate-box input:focus {
+            border-color: #f59e0b;
+        }
+        .generate-box button {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none;
+            padding: 12px 28px;
+            border-radius: 40px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .generate-box button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16,185,129,0.3);
+        }
+
+        /* Search */
+        .search-box {
+            margin-bottom: 20px;
+        }
+        .search-box input {
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 12px 20px;
+            border-radius: 40px;
+            color: white;
+            width: 300px;
+            font-size: 14px;
+        }
+
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 20px;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th {
+            text-align: left;
+            padding: 15px 12px;
+            background: #1e293b;
+            color: #fbbf24;
+            font-weight: 600;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #334155;
+        }
+        tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-active {
+            background: #10b98120;
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+        .status-inactive {
+            background: #ef444420;
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+        .copy-btn, .del-btn, .toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 0 3px;
+            transition: 0.2s;
+        }
+        .copy-btn {
+            background: #f59e0b;
+            color: black;
+        }
+        .copy-btn:hover {
+            background: #d97706;
+        }
+        .del-btn {
+            background: #ef4444;
+            color: white;
+        }
+        .del-btn:hover {
+            background: #dc2626;
+        }
+        .toggle-btn {
+            background: #3b82f6;
+            color: white;
+        }
+        .toggle-btn:hover {
+            background: #2563eb;
+        }
+        .hwid {
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 200px;
+            word-break: break-all;
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 1000;
+            border-left: 4px solid #10b981;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #94a3b8;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+        }
+    </style>
 </head>
 <body>
-<div class="header">🔐 License Dashboard</div>
-<div class="generate">
-<input id="days" placeholder="Days (7/15/30)">
-<button class="genbtn" onclick="generate()">Generate</button>
+<div class="container">
+    <div class="header">
+        <h1>🔐 COC License Manager</h1>
+        <a href="/logout" class="logout-btn">🚪 Logout</a>
+    </div>
+
+    <div class="card">
+        <div class="card-title">✨ Generate New License</div>
+        <div class="generate-box">
+            <input type="number" id="days" placeholder="Days (7, 15, 30)" value="7">
+            <button onclick="generateLicense()">⚡ Generate & Copy</button>
+        </div>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Search by license key or HWID..." onkeyup="filterTable()">
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>ID</th><th>License Key</th><th>HWID</th><th>Status</th><th>Expiry</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="licenseTableBody">
+                <tr><td colspan="6" class="loading">Loading licenses...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="footer">
+        ⚔ COC License Server | Secure HWID Binding
+    </div>
 </div>
-<input class="search" id="search" onkeyup="filterTable()" placeholder="Search license...">
-<table>
-<thead>
-<tr>
-<th>ID</th><th>License</th><th>HWID</th><th>Status</th><th>Expiry</th><th>Actions</th>
-</tr>
-</thead>
-<tbody id="tbody"></tbody>
-</table>
-<div class="toast" id="toast"></div>
+
+<div id="toast" class="toast">✅ Copied!</div>
+
 <script>
-function showToast(msg){
-let t=document.getElementById("toast");
-t.innerText=msg;
-t.style.display="block";
-setTimeout(()=>t.style.display="none",2000);
-}
-function loadTable(){
-fetch("/api/licenses")
-.then(r=>r.json())
-.then(data=>{
-let html="";
-data.forEach(row=>{
-let hwidDisplay = (row[2] && row[2].trim() !== "") ? row[2] : "—";
-html+=`<tr>
-<td>${row[0]}</td>
-<td>${row[1]}</td>
-<td>${hwidDisplay}</td>
-<td>${row[3]}</td>
-<td>${row[4]}</td>
-<td>
-<button class="copy" onclick="copyKey('${row[1]}')">Copy</button>
-<button class="del" onclick="del('${row[1]}')">Delete</button>
-</td>
-</tr>`;
-});
-document.getElementById("tbody").innerHTML=html;
-});
-}
-function generate(){
-let days=document.getElementById("days").value;
-if(!days || isNaN(days)){ showToast("Enter valid days"); return; }
-fetch("/generate",{
-method:"POST",
-headers:{"Content-Type":"application/json","x-api-key":"LAKHAN_84411004778"},
-body:JSON.stringify({days:days})
-})
-.then(r=>r.json())
-.then(d=>{
-if(d.license){
-navigator.clipboard.writeText(d.license);
-showToast("Generated & Copied: "+d.license);
-loadTable();
-}else{ showToast("Error: "+d.status); }
-});
-}
-function del(k){
-fetch("/delete",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({license:k})
-})
-.then(()=>{ showToast("Deleted"); loadTable(); });
-}
-function copyKey(k){
-navigator.clipboard.writeText(k);
-showToast("Copied: "+k);
-}
-function filterTable(){
-let input=document.getElementById("search").value.toLowerCase();
-let rows=document.querySelectorAll("#tbody tr");
-rows.forEach(r=>{
-r.style.display=r.innerText.toLowerCase().includes(input)?"":"none";
-});
-}
-loadTable();
+    const API_BASE = ""; // relative path
+    let licensesData = [];
+
+    function showToast(msg, isError = false) {
+        const toast = document.getElementById("toast");
+        toast.textContent = msg;
+        toast.style.backgroundColor = isError ? "#dc2626" : "#1e293b";
+        toast.style.borderLeftColor = isError ? "#ef4444" : "#10b981";
+        toast.style.display = "block";
+        setTimeout(() => toast.style.display = "none", 2500);
+    }
+
+    async function loadLicenses() {
+        const tbody = document.getElementById("licenseTableBody");
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">⏳ Loading...</td></tr>';
+        try {
+            const res = await fetch("/api/licenses");
+            const data = await res.json();
+            licensesData = data;
+            renderTable(licensesData);
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="6">❌ Failed to load licenses</td></tr>';
+            console.error(e);
+        }
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById("licenseTableBody");
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6">📭 No licenses found</td></tr>';
+            return;
+        }
+        let html = "";
+        for (let row of data) {
+            const id = row[0];
+            const licenseKey = row[1];
+            const hwid = row[2] && row[2] !== "" ? row[2] : "—";
+            const active = row[3] === 1;
+            const expiry = row[4];
+            const statusClass = active ? "status-active" : "status-inactive";
+            const statusText = active ? "Active" : "Inactive";
+            // Optional: color expiry if nearing
+            let expiryClass = "";
+            if (expiry) {
+                const today = new Date().toISOString().slice(0,10);
+                if (expiry < today) expiryClass = "style='color:#ef4444;'";
+            }
+            html += `<tr>
+                <td>${id}</td>
+                <td><code>${licenseKey}</code></td>
+                <td class="hwid" title="${hwid}">${hwid.length > 25 ? hwid.substr(0,22)+"..." : hwid}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td ${expiryClass}>${expiry}</td>
+                <td>
+                    <button class="copy-btn" onclick="copyKey('${licenseKey}')">📋 Copy</button>
+                    <button class="toggle-btn" onclick="toggleStatus('${licenseKey}', ${active})">${active ? '🔴 Deactivate' : '🟢 Activate'}</button>
+                    <button class="del-btn" onclick="deleteLicense('${licenseKey}')">🗑 Delete</button>
+                </td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+    }
+
+    async function generateLicense() {
+        let days = document.getElementById("days").value;
+        if (!days || isNaN(days) || days <= 0) {
+            showToast("Please enter valid days", true);
+            return;
+        }
+        try {
+            const res = await fetch("/generate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": "LAKHAN_84411004778"
+                },
+                body: JSON.stringify({ days: parseInt(days) })
+            });
+            const result = await res.json();
+            if (result.license) {
+                navigator.clipboard.writeText(result.license);
+                showToast(`✅ Generated & Copied: ${result.license}`);
+                loadLicenses(); // refresh table
+            } else {
+                showToast("Error: " + (result.status || "unknown"), true);
+            }
+        } catch(e) {
+            showToast("Server error", true);
+        }
+    }
+
+    async function toggleStatus(licenseKey, currentActive) {
+        const newActive = currentActive ? 0 : 1;
+        // You need to implement a toggle API on server. For now, we'll use a workaround:
+        // Since server doesn't have toggle endpoint, we'll simulate by deleting and regenerating? No.
+        // Better: I'll add a new endpoint /toggle in app.py quickly. But for now, let's inform.
+        // Option: use delete + generate? That would change key. Not good.
+        // I'll include a fetch to /toggle if you want later. For now alert.
+        alert("Toggle feature requires server endpoint. Implement /toggle in app.py to update active status.");
+        // If you want, I can provide the server modification.
+    }
+
+    async function deleteLicense(licenseKey) {
+        if (!confirm(`Delete license ${licenseKey}?`)) return;
+        try {
+            const res = await fetch("/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ license: licenseKey })
+            });
+            if (res.ok) {
+                showToast("Deleted successfully");
+                loadLicenses();
+            } else {
+                showToast("Delete failed", true);
+            }
+        } catch(e) {
+            showToast("Error", true);
+        }
+    }
+
+    function copyKey(key) {
+        navigator.clipboard.writeText(key);
+        showToast(`Copied: ${key}`);
+    }
+
+    function filterTable() {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        if (!query) {
+            renderTable(licensesData);
+            return;
+        }
+        const filtered = licensesData.filter(row => 
+            row[1].toLowerCase().includes(query) || 
+            (row[2] && row[2].toLowerCase().includes(query))
+        );
+        renderTable(filtered);
+    }
+
+    loadLicenses();
 </script>
 </body>
 </html>
