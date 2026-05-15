@@ -72,8 +72,16 @@ def api_licenses():
     c.execute("SELECT * FROM licenses ORDER BY id DESC")
     rows = c.fetchall()
     conn.close()
-    # Ensure HWID is returned as string (not None)
-    result = [[row['id'], row['license_key'], row['hwid'] or "", row['active'], row['expiry']] for row in rows]
+    # Ensure HWID is never None (frontend expects string)
+    result = []
+    for row in rows:
+        result.append([
+            row['id'],
+            row['license_key'],
+            row['hwid'] if row['hwid'] else "",
+            row['active'],
+            row['expiry']
+        ])
     return jsonify(result)
 
 @app.route("/generate", methods=["POST"])
@@ -89,8 +97,9 @@ def generate():
         return jsonify({"status": "invalid_input"}), 400
 
     key = generate_key()
-    # expiry date as YYYY-MM-DD (date only)
-    expiry = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+    # Use date.today() + days, store as YYYY-MM-DD
+    expiry_date = date.today() + timedelta(days=days)
+    expiry = expiry_date.strftime("%Y-%m-%d")
 
     conn = get_db_connection()
     c = conn.cursor()
@@ -120,7 +129,7 @@ def validate():
     key = data.get("key")
     hwid = data.get("hwid")
     if not key:
-        return jsonify({"valid": False})
+        return jsonify({"valid": False, "message": "No key provided"})
 
     conn = get_db_connection()
     c = conn.cursor()
@@ -128,7 +137,7 @@ def validate():
     row = c.fetchone()
     if not row:
         conn.close()
-        return jsonify({"valid": False, "message": "License key not found"})
+        return jsonify({"valid": False, "message": "License not found"})
 
     license_key, saved_hwid, active, expiry = row
 
@@ -136,7 +145,7 @@ def validate():
         conn.close()
         return jsonify({"valid": False, "message": "License inactive"})
 
-    # Compare dates using date objects
+    # Compare dates correctly
     try:
         expiry_date = datetime.strptime(expiry, "%Y-%m-%d").date()
         if expiry_date < date.today():
@@ -151,6 +160,7 @@ def validate():
         # First activation – save HWID
         c.execute("UPDATE licenses SET hwid=%s WHERE license_key=%s", (hwid, key))
         conn.commit()
+        print(f"[DEBUG] HWID saved for {key}: {hwid}")
     elif saved_hwid != hwid:
         conn.close()
         return jsonify({"valid": False, "message": "HWID mismatch"})
