@@ -65,7 +65,6 @@ def logout():
 def dashboard():
     if not session.get("admin"):
         return redirect("/login")
-
     return render_template("dashboard.html")
 
 # ---------------- LIVE DATA ----------------
@@ -78,9 +77,7 @@ def api_licenses():
     conn.close()
     return jsonify(data)
 
-# =========================================================
-# 🔥 FIXED GENERATE (NOW STORES HWID EMPTY PROPERLY)
-# =========================================================
+# ---------------- GENERATE ----------------
 @app.route("/generate", methods=["POST"])
 def generate():
     if request.headers.get("x-api-key") != ADMIN_API_KEY:
@@ -99,12 +96,10 @@ def generate():
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-
     c.execute(
         "INSERT INTO licenses (license_key, hwid, active, expiry) VALUES (?,?,?,?)",
         (key, "", 1, expiry)
     )
-
     conn.commit()
     conn.close()
 
@@ -119,19 +114,16 @@ def generate():
 def delete():
     if not session.get("admin"):
         return jsonify({"status": "unauthorized"})
-
     key = request.json.get("license")
-
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("DELETE FROM licenses WHERE license_key=?", (key,))
     conn.commit()
     conn.close()
-
     return jsonify({"status": "deleted"})
 
 # =========================================================
-# 🔥 NEW: PROPER LICENSE VALIDATION ENDPOINT
+# ✅ VALIDATION ENDPOINT (client yahi use karega)
 # =========================================================
 @app.route("/validate", methods=["POST"])
 def validate():
@@ -143,12 +135,10 @@ def validate():
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-
     c.execute(
         "SELECT license_key, active, expiry FROM licenses WHERE license_key=?",
         (key,)
     )
-
     row = c.fetchone()
     conn.close()
 
@@ -157,11 +147,9 @@ def validate():
 
     license_key, active, expiry = row
 
-    # inactive check
     if active != 1:
         return jsonify({"valid": False})
 
-    # expiry check
     try:
         if expiry < datetime.now().strftime("%Y-%m-%d"):
             return jsonify({"valid": False})
@@ -170,6 +158,5 @@ def validate():
 
     return jsonify({"valid": True})
 
-# ---------------- RUN ----------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
