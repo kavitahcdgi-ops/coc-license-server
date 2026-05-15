@@ -6,7 +6,7 @@ import string
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-CORS(app)  # Allow cross-origin requests from any client
+CORS(app)  # Client (main.py) ko allow karne ke liye
 app.secret_key = "LAKHAN_84411004778"
 
 DB_FILE = "database.db"
@@ -44,7 +44,7 @@ def generate_key():
 def home():
     return "COC License Server Running"
 
-# ---------------- LOGIN (optional, for web dashboard) ----------------
+# ---------------- LOGIN (Web Admin) ----------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -59,12 +59,14 @@ def logout():
     session.clear()
     return redirect("/login")
 
+# ---------------- DASHBOARD (Web Admin) ----------------
 @app.route("/dashboard")
 def dashboard():
     if not session.get("admin"):
         return redirect("/login")
     return render_template("dashboard.html")
 
+# ---------------- API: Get all licenses ----------------
 @app.route("/api/licenses")
 def api_licenses():
     if not session.get("admin"):
@@ -76,7 +78,7 @@ def api_licenses():
     conn.close()
     return jsonify(data)
 
-# ---------------- GENERATE ----------------
+# ---------------- API: Generate license (Admin API key) ----------------
 @app.route("/generate", methods=["POST"])
 def generate():
     if request.headers.get("x-api-key") != ADMIN_API_KEY:
@@ -107,7 +109,7 @@ def generate():
         "expiry": expiry
     })
 
-# ---------------- DELETE ----------------
+# ---------------- API: Delete license (Web admin session) ----------------
 @app.route("/delete", methods=["POST"])
 def delete():
     if not session.get("admin"):
@@ -120,7 +122,7 @@ def delete():
     conn.close()
     return jsonify({"status": "deleted"})
 
-# ---------------- VALIDATION ENDPOINT ----------------
+# ---------------- API: Validate license for Client ----------------
 @app.route("/validate", methods=["POST"])
 def validate():
     data = request.json
@@ -136,7 +138,6 @@ def validate():
 
     if not row:
         return jsonify({"valid": False})
-
     license_key, active, expiry = row
     if active != 1:
         return jsonify({"valid": False})
@@ -145,7 +146,6 @@ def validate():
             return jsonify({"valid": False})
     except:
         return jsonify({"valid": False})
-
     return jsonify({"valid": True})
 
 if __name__ == "__main__":
