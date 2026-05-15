@@ -2,7 +2,6 @@
 <html>
 <head>
 <title>Dashboard</title>
-
 <style>
 body{
 margin:0;
@@ -10,36 +9,30 @@ font-family:Arial;
 background:#0f172a;
 color:white;
 }
-
 .header{
 padding:15px;
 background:#111827;
 font-size:20px;
 }
-
 .generate{
 margin:20px;
 padding:20px;
 background:#1f2937;
 border-radius:12px;
 }
-
 input{
 padding:10px;
 border-radius:8px;
 border:none;
 width:160px;
 }
-
 button{
 padding:8px 12px;
 border:none;
 border-radius:8px;
 cursor:pointer;
 }
-
 .genbtn{background:green;color:white;}
-
 .search{
 margin:20px;
 padding:10px;
@@ -47,23 +40,17 @@ width:300px;
 border-radius:8px;
 border:none;
 }
-
 table{
 width:100%;
 border-collapse:collapse;
 }
-
 th,td{
 padding:10px;
 border-bottom:1px solid #374151;
 }
-
 th{background:#1f2937;}
-
 .copy{background:#f59e0b;color:black;}
 .del{background:red;color:white;}
-
-/* TOAST */
 .toast{
 position:fixed;
 bottom:20px;
@@ -74,58 +61,37 @@ border-radius:8px;
 display:none;
 }
 </style>
-
 </head>
-
 <body>
-
 <div class="header">🔐 License Dashboard</div>
-
-<!-- GENERATE -->
 <div class="generate">
 <input id="days" placeholder="Days (7/15/30)">
 <button class="genbtn" onclick="generate()">Generate</button>
 </div>
-
-<!-- SEARCH -->
 <input class="search" id="search" onkeyup="filterTable()" placeholder="Search license...">
-
 <table>
 <thead>
 <tr>
-<th>ID</th>
-<th>License</th>
-<th>HWID</th>
-<th>Status</th>
-<th>Expiry</th>
-<th>Actions</th>
+<th>ID</th><th>License</th><th>HWID</th><th>Status</th><th>Expiry</th><th>Actions</th>
 </tr>
 </thead>
-
 <tbody id="tbody"></tbody>
 </table>
-
 <div class="toast" id="toast"></div>
-
 <script>
-
 function showToast(msg){
 let t=document.getElementById("toast");
 t.innerText=msg;
 t.style.display="block";
 setTimeout(()=>t.style.display="none",2000);
 }
-
-/* LOAD LIVE TABLE */
 function loadTable(){
 fetch("/api/licenses")
 .then(r=>r.json())
 .then(data=>{
 let html="";
-
 data.forEach(row=>{
-html+=`
-<tr>
+html+=`<tr>
 <td>${row[0]}</td>
 <td>${row[1]}</td>
 <td>${row[2] || ""}</td>
@@ -135,75 +101,48 @@ html+=`
 <button class="copy" onclick="copyKey('${row[1]}')">Copy</button>
 <button class="del" onclick="del('${row[1]}')">Delete</button>
 </td>
-</tr>
-`;
+</tr>`;
 });
-
 document.getElementById("tbody").innerHTML=html;
 });
 }
-
-/* GENERATE */
 function generate(){
 let days=document.getElementById("days").value;
-
-if(!days || isNaN(days)){
-showToast("Enter valid days");
-return;
-}
-
+if(!days || isNaN(days)){ showToast("Enter valid days"); return; }
 fetch("/generate",{
 method:"POST",
-headers:{
-"Content-Type":"application/json",
-"x-api-key":"LAKHAN_84411004778"
-},
+headers:{"Content-Type":"application/json","x-api-key":"LAKHAN_84411004778"},
 body:JSON.stringify({days:days})
 })
 .then(r=>r.json())
 .then(d=>{
-
 if(d.license){
-navigator.clipboard.writeText(d.license); // AUTO COPY
-showToast("Generated & Copied: " + d.license);
+navigator.clipboard.writeText(d.license);
+showToast("Generated & Copied: "+d.license);
 loadTable();
-}else{
-showToast("Error: " + d.status);
-}
-
+}else{ showToast("Error: "+d.status); }
 });
 }
-
-/* DELETE */
 function del(k){
 fetch("/delete",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({license:k})
 })
-.then(()=>{showToast("Deleted");loadTable();});
+.then(()=>{ showToast("Deleted"); loadTable(); });
 }
-
-/* COPY */
 function copyKey(k){
 navigator.clipboard.writeText(k);
-showToast("Copied: " + k);
+showToast("Copied: "+k);
 }
-
-/* SEARCH */
 function filterTable(){
 let input=document.getElementById("search").value.toLowerCase();
 let rows=document.querySelectorAll("#tbody tr");
-
 rows.forEach(r=>{
 r.style.display=r.innerText.toLowerCase().includes(input)?"":"none";
 });
 }
-
-/* INIT */
 loadTable();
-
 </script>
-
 </body>
 </html>
